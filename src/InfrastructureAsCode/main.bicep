@@ -2,72 +2,45 @@
 param environment string = 'dev'
 
 @description('Location of services')
-param location string = resourceGroup().location
+param location string = 'southcentralus'
+" //resourceGroup().location
 
 var webAppName = '${uniqueString(resourceGroup().id)}-${environment}'
 var appServicePlanName = '${uniqueString(resourceGroup().id)}-mpnp-asp'
 var logAnalyticsName = '${uniqueString(resourceGroup().id)}-mpnp-la'
 var appInsightsName = '${uniqueString(resourceGroup().id)}-mpnp-ai'
-var sku = 'S1'
+var sku = 'D2ads_v6'
 var registryName = '${uniqueString(resourceGroup().id)}mpnpreg'
 var registrySku = 'Standard'
 var imageName = 'techexcel/dotnetcoreapp'
 var startupCommand = ''
 
-resource appServicePlan 'Microsoft.Web/serverfarms@2021-02-01' = {
-  name: appServicePlanName
-  location: location
-  sku: {
-    name: sku
-    tier: 'Standard'
-  }
-  properties: {
-    reserved: true
-  }
-}
 
-resource webApp 'Microsoft.Web/sites@2021-02-01' = {
-  name: webAppName
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-12-01-preview' = {
+  name: logAnalyticsName
   location: location
   properties: {
-    serverFarmId: appServicePlan.id
-    siteConfig: {
-      linuxFxVersion: 'DOCKER|${imageName}'
-      appSettings: [
-        {
-          name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: 'https://${registryName}.azurecr.io'
-        }
-        {
-          name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-          value: acrCredentials.properties.username
-        }
-        {
-          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-          value: acrCredentials.properties.passwords[0].value
-        }
-        {
-          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-          value: 'false'
-        }
-        {
-          name: 'WEBSITES_PORT'
-          value: '80'
-        }
-      ]
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 90
+    workspaceCapping: {
+      dailyQuotaGb: 1
     }
   }
 }
 
-resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
   name: appInsightsName
   location: location
+  kind: 'web'
   properties: {
     Application_Type: 'web'
+    WorkspaceResourceId: logAnalyticsWorkspace.id
   }
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2020-11-01-preview' = {
   name: registryName
   location: location
   sku: {
@@ -78,12 +51,56 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
   }
 }
 
-resource acrCredentials 'Microsoft.ContainerRegistry/registries/listCredentials@2021-09-01' = {
-  name: 'listCredentials'
-  parent: acr
+resource appServicePlan 'Microsoft.Web/serverFarms@2022-09-01' = {
+  name: appServicePlanName
+  location: location
+  kind: 'linux'
+  properties: {
+    reserved: true
+  }
+  sku: {
+    name: sku
+  }
 }
 
-output webAppName string = webAppName
-output appServicePlanName string = appServicePlanName
-output appInsightsName string = appInsightsName
-output registryName string = registryName
+resource appServiceApp 'Microsoft.Web/sites@2020-12-01' = {
+  name: webAppName
+  location: location
+  properties: {
+    serverFarmId: appServicePlan.id
+    httpsOnly: true
+    clientAffinityEnabled: false
+    siteConfig: {
+      linuxFxVersion: 'DOCKER|${containerRegistry.name}.azurecr.io/${uniqueString(resourceGroup().id)}/${imageName}'
+      http20Enabled: true
+      minTlsVersion: '1.2'
+      appCommandLine: startupCommand
+      appSettings: [
+        {
+          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+          value: 'false'
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_URL'
+          value: 'https://${containerRegistry.name}.azurecr.io'
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_USERNAME'
+          value: containerRegistry.name
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
+          value: containerRegistry.listCredentials().passwords[0].value
+        }
+        {
+          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+          value: appInsights.properties.InstrumentationKey
+        }
+        ]
+      }
+    }
+}
+
+output application_name string = appServiceApp.name
+output application_url string = appServiceApp.properties.hostNames[0]
+output container_registry_name string = containerRegistry.name
