@@ -3,7 +3,7 @@ param environment string = 'dev'
 
 @description('Location of services')
 param location string = 'southcentralus'
-" //resourceGroup().location
+//resourceGroup().location
 
 var webAppName = '${uniqueString(resourceGroup().id)}-${environment}'
 var appServicePlanName = '${uniqueString(resourceGroup().id)}-mpnp-asp'
