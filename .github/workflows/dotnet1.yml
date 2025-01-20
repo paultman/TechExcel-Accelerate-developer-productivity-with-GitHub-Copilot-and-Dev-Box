@@ -1,30 +1,47 @@
 # This workflow will build a .NET project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 
-name: .NET
+name: .NET CI
+
+env:
+  registryName: cnr572dhcfwcimpnpreg.azurecr.io
+  repositoryName: techexcel/dotnetcoreapp
+  dockerFolderPath: ./src/Application/src/RazorPagesTestSample
+  tag: ${{github.run_number}}
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
     paths: src/Application/**
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
     paths: src/Application/**
+  workflow_dispatch:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0
+
+      - name: Restore dependencies
+        run: dotnet restore ./src/Application/src/RazorPagesTestSample/RazorPagesTestSample.csproj
+      - name: Build
+        run: dotnet build --no-restore ./src/Application/src/RazorPagesTestSample/RazorPagesTestSample.csproj
+      - name: Test
+        run: dotnet test --no-build --verbosity normal ./src/Application/tests/RazorPagesTestSample.Tests/RazorPagesTestSample.Tests.csproj
+      - name: Docker Login
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.registryName }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      - name: Docker Build
+        run: docker build -t ${{ env.registryName }}/${{ env.repositoryName }}:${{ env.tag }} ${{ env.dockerFolderPath }}
+      - name: Docker Push
+        run: docker push ${{ env.registryName }}/${{ env.repositoryName }}:${{ env.tag }}
