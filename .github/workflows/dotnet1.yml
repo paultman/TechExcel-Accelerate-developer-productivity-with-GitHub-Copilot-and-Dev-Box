@@ -54,7 +54,7 @@ jobs:
       - name: Docker Push
         run: docker push ${{ env.registryName }}/${{ env.repositoryName }}:${{ env.tag }}
 
-  deploy:
+  deploy-to-dev:
     runs-on: ubuntu-latest
     needs: build # Ensures 'deploy' runs after 'build' job completes successfully
 
@@ -72,6 +72,41 @@ jobs:
         with:
           app-name: "${{ env.webAppName }}-dev"
           images: "${{ env.registryName }}/${{ env.repositoryName }}:${{ env.tag }}"
-          # Alternatively, if you're not using Docker, you can use the publish profile
-          # publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
-          # package: .
+
+  deploy-to-test:
+    runs-on: ubuntu-latest
+    needs: deploy-to-dev # Ensures 'deploy-to-test' runs after 'deploy-to-dev' completes successfully
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2.1.1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure WebApp Deploy
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: "${{ env.webAppName }}-test"
+          images: "${{ env.registryName }}/${{ env.repositoryName }}:${{ env.tag }}"
+
+  deploy-to-prod:
+    runs-on: ubuntu-latest
+    needs: deploy-to-test # Ensures 'deploy-to-prod' runs after 'deploy-to-test' completes successfully
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2.1.1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure WebApp Deploy
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: "${{ env.webAppName }}-prod"
+          images: "${{ env.registryName }}/${{ env.repositoryName }}:${{ env.tag }}"
