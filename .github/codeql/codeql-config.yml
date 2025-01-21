@@ -1,0 +1,5 @@
+name: "CodeQL config"
+queries:
+  - uses: codeql/javascript-queries
+  - uses: codeql/csharp-queries
+  - uses: codeql/java-queries
