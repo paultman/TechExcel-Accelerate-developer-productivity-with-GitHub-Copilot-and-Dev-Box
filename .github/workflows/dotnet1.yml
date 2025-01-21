@@ -76,7 +76,7 @@ jobs:
 
   deploy-to-test:
     runs-on: ubuntu-latest
-    needs: deploy-to-dev # Ensures 'deploy-to-test' runs after 'deploy-to-dev' completes successfully
+    needs: deploy-to-dev
     environment: test
 
     steps:
