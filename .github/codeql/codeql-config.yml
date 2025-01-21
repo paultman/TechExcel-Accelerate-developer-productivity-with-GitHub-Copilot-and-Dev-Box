@@ -1,5 +1,5 @@
 name: "CodeQL config"
 queries:
-  - uses: github/codeql/javascript-queries
-  - uses: github/codeql/csharp-queries
-  - uses: github/codeql/java-queries
+  - uses: github/codeql/javascript-queries@main
+  - uses: github/codeql/csharp-queries@main
+  - uses: github/codeql/java-queries@main
