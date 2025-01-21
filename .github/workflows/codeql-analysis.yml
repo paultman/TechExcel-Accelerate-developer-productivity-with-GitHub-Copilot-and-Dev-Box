@@ -20,17 +20,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: "csharp,cpp" # Add other languages as needed
           config-file: .github/codeql/codeql-config.yml # Path to a custom config file
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v2
+        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: "security-and-quality" # Can be "security", "dependency", "security-and-quality"
           upload: true
-          output: codeql-results.sarif
+          output: codeql-results.sarif:w
